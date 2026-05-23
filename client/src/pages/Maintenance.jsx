@@ -13,6 +13,7 @@ const Maintenance = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [form, setForm] = useState({ unit_id: '', title: '', description: '', priority: 'Medium' });
+  const [myLeases, setMyLeases] = useState([]);
   const { role } = useAuth();
   useScrollReveal();
 
@@ -24,7 +25,18 @@ const Maintenance = () => {
     if (params.length) url += '?' + params.join('&');
     API.get(url).then(r => { setRequests(r.data.data); setLoading(false); }).catch(() => setLoading(false));
   };
+  
   useEffect(() => { load(); }, [statusFilter, priorityFilter]);
+
+  useEffect(() => {
+    if (role === 'Tenant') {
+      API.get('/tenant-portal/dashboard').then(r => {
+        if (r.data?.data?.allLeases) {
+          setMyLeases(r.data.data.allLeases.filter(l => l.status === 'Active'));
+        }
+      }).catch(()=>{});
+    }
+  }, [role]);
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -98,7 +110,15 @@ const Maintenance = () => {
 
         <Modal isOpen={modal} onClose={() => setModal(false)} title="New Maintenance Request">
           <form onSubmit={handleCreate}>
-            <div style={{ marginBottom: '16px' }}><label style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Unit ID *</label><input className="nexas-input" value={form.unit_id} onChange={e => setForm({ ...form, unit_id: e.target.value })} required /></div>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Select Unit *</label>
+              <select className="nexas-select" value={form.unit_id} onChange={e => setForm({ ...form, unit_id: e.target.value })} required>
+                <option value="">-- Choose your unit --</option>
+                {myLeases.map(l => (
+                  <option key={l.unit_id} value={l.unit_id}>{l.property_name} (Unit {l.unit_number})</option>
+                ))}
+              </select>
+            </div>
             <div style={{ marginBottom: '16px' }}><label style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Title *</label><input className="nexas-input" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} required /></div>
             <div style={{ marginBottom: '16px' }}><label style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Description</label><textarea className="nexas-input" rows="3" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} style={{ resize: 'vertical' }} /></div>
             <div style={{ marginBottom: '24px' }}><label style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Priority</label><select className="nexas-select" value={form.priority} onChange={e => setForm({ ...form, priority: e.target.value })}><option>Low</option><option>Medium</option><option>High</option><option>Emergency</option></select></div>
