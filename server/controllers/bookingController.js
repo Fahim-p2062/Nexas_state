@@ -214,10 +214,10 @@ const getLandlordBookings = async (req, res) => {
   }
 };
 
-const updateBookingStatus = async (req, res) => {
+  const updateBookingStatus = async (req, res) => {
   try {
     const landlordId = req.user.id;
-    const { status } = req.body;
+    const { status, lease_start, lease_end, monthly_rent, security_deposit } = req.body;
 
     if (!['Approved', 'Rejected'].includes(status)) {
       return res.status(400).json({ success: false, message: 'Status must be Approved or Rejected.' });
@@ -241,17 +241,22 @@ const updateBookingStatus = async (req, res) => {
 
     // If approved and unit exists, create the lease and mark unit occupied
     if (status === 'Approved' && booking[0].unit_id) {
-      const rent = booking[0].rent_amount || 0;
-      const securityDeposit = rent * 2;
+      const rent = monthly_rent !== undefined ? monthly_rent : (booking[0].rent_amount || 0);
+      const deposit = security_deposit !== undefined ? security_deposit : (rent * 2);
       
-      const startDate = new Date();
-      const endDate = new Date();
-      endDate.setFullYear(endDate.getFullYear() + 1);
+      const startDate = lease_start ? new Date(lease_start) : new Date();
+      let endDate;
+      if (lease_end) {
+        endDate = new Date(lease_end);
+      } else {
+        endDate = new Date(startDate);
+        endDate.setFullYear(endDate.getFullYear() + 1);
+      }
 
       await pool.query(
         `INSERT INTO leases (unit_id, tenant_id, start_date, end_date, monthly_rent, security_deposit, status)
          VALUES (?, ?, ?, ?, ?, ?, 'Active')`,
-        [booking[0].unit_id, booking[0].tenant_id, startDate, endDate, rent, securityDeposit]
+        [booking[0].unit_id, booking[0].tenant_id, startDate, endDate, rent, deposit]
       );
 
       await pool.query(
