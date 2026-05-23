@@ -26,7 +26,11 @@ API.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('nexasestate_token');
       localStorage.removeItem('nexasestate_user');
-      window.location.href = '/login';
+      
+      // Do not redirect if the error is from the login request itself
+      if (!error.config.url.includes('/auth/login')) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
