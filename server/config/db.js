@@ -30,6 +30,9 @@ const pool = mysql.createPool({
 
   // Return DATE / DATETIME as strings to avoid JS Date auto-conversion
   dateStrings: true,
+
+  // SSL requirement for remote hosted databases (TiDB, PlanetScale, etc)
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: true } : undefined,
 });
 
 // ── Startup connection test ─────────────────────────────────

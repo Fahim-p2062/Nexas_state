@@ -285,17 +285,4 @@ INSERT INTO audit_logs (action, table_name, record_id, performed_by, performed_b
 ('UPDATE', 'payments', 29, 1, 'Landlord', 'Payment Overdue.'),
 ('UPDATE', 'maintenance_requests', 11, 3, 'Staff', 'Lift assigned.');
 
--- -------------------------------------------------------------
--- Testing Users
--- -------------------------------------------------------------
-INSERT INTO admins (name, email, password_hash, role) VALUES
-('Bossman Admin', 'bossman9@gmail.com', '$2b$10$s8Kj797b8O0nrKJaEoPbUe0KEco27CqtlGD1YweOtgL2S.mo8ozR6', 'super_admin');
 
-INSERT INTO landlords (name, email, password_hash, contact) VALUES
-('Fahim Landlord', 'fahim123@gmail.com', '$2b$10$94UWcESBi6YQIFHKYRrdleT4Hguf7dwz7ZufHKPJfAoHEuvMBYu7m', '01911-111111');
-
-INSERT INTO tenants (name, email, password_hash, nid, phone, emergency_contact) VALUES
-('Arif Testing', 'arif123@gmail.com', '$2b$10$94UWcESBi6YQIFHKYRrdleT4Hguf7dwz7ZufHKPJfAoHEuvMBYu7m', '1999123456789', '01700-111111', '01800-222222');
-
-INSERT INTO staff (landlord_id, name, email, password_hash, role, phone) VALUES
-(1, 'Ahon Staff', 'ahon123@gmail.com', '$2b$10$94UWcESBi6YQIFHKYRrdleT4Hguf7dwz7ZufHKPJfAoHEuvMBYu7m', 'Maintenance', '01600-333333');
