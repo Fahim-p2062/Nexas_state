@@ -300,3 +300,13 @@ JOIN units u ON mr.unit_id = u.unit_id
 JOIN tenants t ON mr.tenant_id = t.tenant_id
 LEFT JOIN maintenance_assignments ma ON mr.request_id = ma.request_id
 LEFT JOIN staff s ON ma.staff_id = s.staff_id;
+
+CREATE TABLE IF NOT EXISTS staff_reviews (
+  review_id INT AUTO_INCREMENT PRIMARY KEY,
+  staff_id INT NOT NULL,
+  reviewer_name VARCHAR(100) NOT NULL,
+  rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  comment TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (staff_id) REFERENCES staff(staff_id) ON DELETE CASCADE
+);

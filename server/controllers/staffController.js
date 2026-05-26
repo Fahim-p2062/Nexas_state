@@ -79,4 +79,30 @@ const updateStaff = async (req, res) => {
   }
 };
 
-module.exports = { getStaff, createStaff, updateStaff };
+const getStaffMeStats = async (req, res) => {
+  try {
+    const staffId = req.user.id;
+
+    const [tasks] = await pool.query(
+      `SELECT mr.status FROM maintenance_requests mr
+       JOIN maintenance_assignments ma ON mr.request_id = ma.request_id
+       WHERE ma.staff_id = ?`,
+       [staffId]
+    );
+
+    const completed = tasks.filter(t => t.status === 'Resolved' || t.status === 'Closed').length;
+    const remaining = tasks.filter(t => t.status !== 'Resolved' && t.status !== 'Closed').length;
+
+    const [reviews] = await pool.query('SELECT * FROM staff_reviews WHERE staff_id = ? ORDER BY created_at DESC', [staffId]);
+    
+    // Calculate average rating
+    const avgRating = reviews.length > 0 ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) : 0;
+
+    res.json({ success: true, data: { completed, remaining, reviews, avgRating } });
+  } catch (err) {
+    console.error('Get staff stats error:', err);
+    res.status(500).json({ success: false, message: 'Server error.' });
+  }
+};
+
+module.exports = { getStaff, createStaff, updateStaff, getStaffMeStats };

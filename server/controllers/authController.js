@@ -96,7 +96,7 @@ const login = async (req, res) => {
       const [rows] = await pool.query('SELECT tenant_id as id, name, email, password_hash FROM tenants WHERE email = ?', [email]);
       if (rows.length > 0) user = { ...rows[0], role: 'Tenant' };
     } else if (loginRole === 'Staff') {
-      const [rows] = await pool.query('SELECT staff_id as id, name, email, password_hash, landlord_id FROM staff WHERE email = ?', [email]);
+      const [rows] = await pool.query('SELECT staff_id as id, name, email, password_hash, landlord_id, role as job_title, phone FROM staff WHERE email = ?', [email]);
       if (rows.length > 0) user = { ...rows[0], role: 'Staff' };
     }
 
@@ -133,6 +133,7 @@ const login = async (req, res) => {
           email: user.email,
           role: user.role,
           ...(user.admin_role ? { admin_role: user.admin_role } : {}),
+          ...(user.job_title ? { job_title: user.job_title, phone: user.phone } : {})
         }
       }
     });
