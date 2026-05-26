@@ -325,4 +325,10 @@ INSERT INTO staff_reviews (staff_id, reviewer_name, rating, comment) VALUES
 (1, 'Sumaiya Islam', 4, 'He completed the job on time, but left a bit of a mess.'),
 (1, 'Nabil Hasan', 5, 'Excellent service and very polite.');
 
+-- 5. Add dummy notifications for Ahon
+INSERT INTO notifications (user_id, user_role, message, type, is_read) VALUES
+(1, 'Staff', 'New maintenance request assigned: Dummy Pending Work 1', 'Maintenance', FALSE),
+(1, 'Staff', 'New maintenance request assigned: Dummy Pending Work 2', 'Maintenance', FALSE),
+(1, 'Staff', 'You received a 5-star review from Arif Mahmud!', 'General', FALSE);
+
 

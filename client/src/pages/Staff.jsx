@@ -82,6 +82,12 @@ const Staff = () => {
               
               {staffStats ? (
                 <>
+                  {staffStats.avgRating > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', background: 'rgba(245, 158, 11, 0.1)', padding: '8px 24px', borderRadius: '30px', color: '#f59e0b', fontWeight: 700, fontSize: '18px' }}>
+                      <span style={{ fontSize: '24px' }}>⭐</span> {staffStats.avgRating} <span style={{ fontSize: '14px', color: 'var(--text-muted)', fontWeight: 600 }}>({staffStats.reviews?.length} Reviews)</span>
+                    </div>
+                  )}
+
                   <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
                     <div style={{ padding: '6px 16px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderRadius: '20px', fontWeight: 700 }}>
                       {staffStats.completed} Completed
