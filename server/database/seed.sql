@@ -3,12 +3,14 @@ USE nexasestate;
 INSERT INTO admins (name, email, password_hash, role) VALUES
 ('Fahim Bin Zaman', 'fahim@nexasestate.com', '$2b$10$KIXkD3y1mZ9vQwXe7Lp8OuN2sT5aB6cD4eF7gH8iJ9kL0mN1oP2qR', 'super_admin'),
 ('Safin', 'safin@nexasestate.com', '$2b$10$KIXkD3y1mZ9vQwXe7Lp8OuN2sT5aB6cD4eF7gH8iJ9kL0mN1oP2qR', 'admin'),
-('System Support', 'support@nexasestate.com', '$2b$10$KIXkD3y1mZ9vQwXe7Lp8OuN2sT5aB6cD4eF7gH8iJ9kL0mN1oP2qR', 'admin');
+('System Support', 'support@nexasestate.com', '$2b$10$KIXkD3y1mZ9vQwXe7Lp8OuN2sT5aB6cD4eF7gH8iJ9kL0mN1oP2qR', 'admin'),
+('Bossman', 'bossman9@gmail.com', '$2b$10$TvGQVGX39FZZUPyqhSNxA.0/rIsXozKswkOwqfOW2J9307323vpKS', 'super_admin');
 
 INSERT INTO landlords (name, email, password_hash, contact) VALUES
 ('Rahman Chowdhury', 'rahman@nexasestate.com', '$2b$10$KIXkD3y1mZ9vQwXe7Lp8OuN2sT5aB6cD4eF7gH8iJ9kL0mN1oP2qR', '01711-223344'),
 ('Fatema Begum', 'fatema@nexasestate.com', '$2b$10$KIXkD3y1mZ9vQwXe7Lp8OuN2sT5aB6cD4eF7gH8iJ9kL0mN1oP2qR', '01812-334455'),
-('Kamal Hossain', 'kamal@nexasestate.com', '$2b$10$KIXkD3y1mZ9vQwXe7Lp8OuN2sT5aB6cD4eF7gH8iJ9kL0mN1oP2qR', '01913-445566');
+('Kamal Hossain', 'kamal@nexasestate.com', '$2b$10$KIXkD3y1mZ9vQwXe7Lp8OuN2sT5aB6cD4eF7gH8iJ9kL0mN1oP2qR', '01913-445566'),
+('Fahim Landlord', 'fahim123@gmail.com', '$2b$10$0lFaWA4cSkJTrA8pPQiNPeEqhIm9Pkm0I.pcC.AKQi/2R687bVfqG', '01234-567890');
 
 INSERT INTO properties (landlord_id, name, address, city, type) VALUES
 (1, 'Gulshan Heights', 'Road 12, Block C, Gulshan-2', 'Dhaka', 'Residential'),
@@ -60,7 +62,11 @@ INSERT INTO tenants (name, email, password_hash, nid, phone, emergency_contact) 
 ('Raihan Uddin', 'raihan@gmail.com', '$2b$10$KIXkD3y1mZ9vQwXe7Lp8OuN2sT5aB6cD4eF7gH8iJ9kL0mN1oP2qR', '1986123450001', '01718-011122', '01818-011133'),
 ('Sabrina Akter', 'sabrina@gmail.com', '$2b$10$KIXkD3y1mZ9vQwXe7Lp8OuN2sT5aB6cD4eF7gH8iJ9kL0mN1oP2qR', '1998234560002', '01819-012233', '01919-012244'),
 ('Mehedi Hassan', 'mehedi@gmail.com', '$2b$10$KIXkD3y1mZ9vQwXe7Lp8OuN2sT5aB6cD4eF7gH8iJ9kL0mN1oP2qR', '1990345670003', '01920-013344', '01720-013355'),
-('Farhana Sultana', 'farhana@gmail.com', '$2b$10$KIXkD3y1mZ9vQwXe7Lp8OuN2sT5aB6cD4eF7gH8iJ9kL0mN1oP2qR', '1993456780004', '01621-014455', '01521-014466');
+('Farhana Sultana', 'farhana@gmail.com', '$2b$10$KIXkD3y1mZ9vQwXe7Lp8OuN2sT5aB6cD4eF7gH8iJ9kL0mN1oP2qR', '1993456780004', '01621-014455', '01521-014466'),
+('Arif Testing', 'arif123@gmail.com', '$2b$10$0lFaWA4cSkJTrA8pPQiNPeEqhIm9Pkm0I.pcC.AKQi/2R687bVfqG', '9999999999999', '01711-122233', '01811-122233');
+
+INSERT INTO staff (landlord_id, name, email, password_hash, role, phone) VALUES
+(1, 'Ahon Staff', 'ahon123@gmail.com', '$2b$10$0lFaWA4cSkJTrA8pPQiNPeEqhIm9Pkm0I.pcC.AKQi/2R687bVfqG', 'Manager', '01700-112233');
 
 INSERT INTO leases (unit_id, tenant_id, start_date, end_date, monthly_rent, security_deposit, status) VALUES
 (1, 1, '2024-01-01', '2025-12-31', 55000.00, 110000.00, 'Active'),
@@ -295,4 +301,5 @@ INSERT INTO audit_logs (action, table_name, record_id, performed_by, performed_b
 ('CREATE', 'staff', 1, 1, 'Landlord', 'Staff added.'),
 ('UPDATE', 'payments', 29, 1, 'Landlord', 'Payment Overdue.'),
 ('UPDATE', 'maintenance_requests', 11, 3, 'Staff', 'Lift assigned.');
+
 

@@ -24,6 +24,17 @@ const Complaints = () => {
     subject: '',
     description: '',
   });
+  const [myLeases, setMyLeases] = useState([]);
+
+  useEffect(() => {
+    if (role === 'Tenant') {
+      API.get('/tenant-portal/dashboard').then(r => {
+        if (r.data?.data?.allLeases) {
+          setMyLeases(r.data.data.allLeases.filter(l => l.status === 'Active'));
+        }
+      }).catch(()=>{});
+    }
+  }, [role]);
 
   const load = () => {
     setLoading(true);
@@ -154,8 +165,13 @@ const Complaints = () => {
         <Modal isOpen={modal} onClose={() => setModal(false)} title="New Objection">
           <form onSubmit={submit}>
             <div style={{ marginBottom: '16px' }}>
-              <label style={labelStyle}>Lease ID *</label>
-              <input className="nexas-input" value={form.lease_id} onChange={e => setForm({ ...form, lease_id: e.target.value })} required />
+              <label style={labelStyle}>Select Active Lease *</label>
+              <select className="nexas-select" value={form.lease_id} onChange={e => setForm({ ...form, lease_id: e.target.value })} required>
+                <option value="">-- Choose your lease --</option>
+                {myLeases.map(l => (
+                  <option key={l.lease_id} value={l.lease_id}>{l.property_name} (Unit {l.unit_number})</option>
+                ))}
+              </select>
             </div>
             <div style={{ marginBottom: '16px' }}>
               <label style={labelStyle}>Against</label>

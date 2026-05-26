@@ -214,18 +214,19 @@ const getLandlordBookings = async (req, res) => {
   }
 };
 
-const updateBookingStatus = async (req, res) => {
+  const updateBookingStatus = async (req, res) => {
   try {
     const landlordId = req.user.id;
-    const { status } = req.body;
+    const { status, lease_start, lease_end, monthly_rent, security_deposit } = req.body;
 
     if (!['Approved', 'Rejected'].includes(status)) {
       return res.status(400).json({ success: false, message: 'Status must be Approved or Rejected.' });
     }
 
     const [booking] = await pool.query(
-      `SELECT pb.*, p.landlord_id FROM property_bookings pb
+      `SELECT pb.*, p.landlord_id, u.rent_amount FROM property_bookings pb
        JOIN properties p ON pb.property_id = p.property_id
+       LEFT JOIN units u ON pb.unit_id = u.unit_id
        WHERE pb.booking_id = ? AND p.landlord_id = ?`,
       [req.params.id, landlordId]
     );
@@ -237,6 +238,32 @@ const updateBookingStatus = async (req, res) => {
       "UPDATE property_bookings SET status = ?, reviewed_at = NOW() WHERE booking_id = ?",
       [status, req.params.id]
     );
+
+    // If approved and unit exists, create the lease and mark unit occupied
+    if (status === 'Approved' && booking[0].unit_id) {
+      const rent = monthly_rent !== undefined ? monthly_rent : (booking[0].rent_amount || 0);
+      const deposit = security_deposit !== undefined ? security_deposit : (rent * 2);
+      
+      const startDate = lease_start ? new Date(lease_start) : new Date();
+      let endDate;
+      if (lease_end) {
+        endDate = new Date(lease_end);
+      } else {
+        endDate = new Date(startDate);
+        endDate.setFullYear(endDate.getFullYear() + 1);
+      }
+
+      await pool.query(
+        `INSERT INTO leases (unit_id, tenant_id, start_date, end_date, monthly_rent, security_deposit, status)
+         VALUES (?, ?, ?, ?, ?, ?, 'Active')`,
+        [booking[0].unit_id, booking[0].tenant_id, startDate, endDate, rent, deposit]
+      );
+
+      await pool.query(
+        "UPDATE units SET status = 'Occupied' WHERE unit_id = ?",
+        [booking[0].unit_id]
+      );
+    }
 
     await pool.query(
       `INSERT INTO notifications (user_id, user_role, message, type)

@@ -8,6 +8,14 @@ const LandlordBookings = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
 
+  const [approvalModal, setApprovalModal] = useState(null);
+  const [leaseParams, setLeaseParams] = useState({
+    lease_start: new Date().toISOString().split('T')[0],
+    lease_end: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
+    monthly_rent: '',
+    security_deposit: ''
+  });
+
   const load = () => {
     API.get('/bookings/landlord')
       .then(r => { setBookings(r.data.data); setLoading(false); })
@@ -17,6 +25,18 @@ const LandlordBookings = () => {
   useEffect(() => { load(); }, []);
 
   const handleAction = async (id, status) => {
+    if (status === 'Approved') {
+      const booking = bookings.find(b => b.booking_id === id);
+      setLeaseParams({
+        lease_start: new Date().toISOString().split('T')[0],
+        lease_end: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
+        monthly_rent: booking.rent_amount || '',
+        security_deposit: (booking.rent_amount * 2) || ''
+      });
+      setApprovalModal(booking);
+      return;
+    }
+
     if (!confirm(`${status} this booking request?`)) return;
     try {
       await API.put(`/bookings/landlord/${id}`, { status });
@@ -24,6 +44,21 @@ const LandlordBookings = () => {
       load();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed');
+    }
+  };
+
+  const submitApproval = async (e) => {
+    e.preventDefault();
+    try {
+      await API.put(`/bookings/landlord/${approvalModal.booking_id}`, { 
+        status: 'Approved',
+        ...leaseParams
+      });
+      toast.success('Booking approved & Lease generated!');
+      setApprovalModal(null);
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to approve booking');
     }
   };
 
@@ -137,15 +172,15 @@ const LandlordBookings = () => {
                       background: 'linear-gradient(135deg, rgba(16,185,129,0.2), rgba(16,185,129,0.1))',
                       color: '#10b981', fontSize: '12px', fontWeight: 600,
                       cursor: 'pointer', fontFamily: 'var(--font-body)',
-                      border: '1px solid rgba(16,185,129,0.2)',
-                    }}>✓ Approve</button>
+                      border: '1px solid rgba(16,185,129,0.2)', transition: 'background 0.3s'
+                    }} onMouseEnter={e => e.target.style.background='rgba(16,185,129,0.2)'} onMouseLeave={e => e.target.style.background='linear-gradient(135deg, rgba(16,185,129,0.2), rgba(16,185,129,0.1))'}>✓ Approve</button>
                     <button onClick={() => handleAction(b.booking_id, 'Rejected')} style={{
                       padding: '10px 20px', borderRadius: '10px',
                       background: 'rgba(255,80,80,0.08)',
                       color: '#ff7b7b', fontSize: '12px', fontWeight: 600,
                       cursor: 'pointer', fontFamily: 'var(--font-body)',
-                      border: '1px solid rgba(255,80,80,0.2)',
-                    }}>✕ Reject</button>
+                      border: '1px solid rgba(255,80,80,0.2)', transition: 'background 0.3s'
+                    }} onMouseEnter={e => e.target.style.background='rgba(255,80,80,0.15)'} onMouseLeave={e => e.target.style.background='rgba(255,80,80,0.08)'}>✕ Reject</button>
                   </div>
                 )}
               </div>
@@ -153,6 +188,59 @@ const LandlordBookings = () => {
           </div>
         )}
       </div>
+
+      {/* Approval Modal */}
+      {approvalModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999
+        }}>
+          <div style={{
+            background: 'var(--bg-secondary)', padding: '32px', borderRadius: '16px',
+            width: '90%', maxWidth: '500px', border: '1px solid var(--border-subtle)',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.4)', animation: 'modalIn 0.3s ease'
+          }}>
+            <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.5rem', marginBottom: '8px' }}>Finalize Lease Terms</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '24px' }}>
+              Review and adjust the lease details for {approvalModal.tenant_name} before generating the lease.
+            </p>
+            <form onSubmit={submitApproval} style={{ display: 'grid', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div>
+                  <label className="nexas-label">Lease Start Date</label>
+                  <input type="date" className="nexas-input" value={leaseParams.lease_start} onChange={e => setLeaseParams({...leaseParams, lease_start: e.target.value})} required />
+                </div>
+                <div>
+                  <label className="nexas-label">Lease End Date</label>
+                  <input type="date" className="nexas-input" value={leaseParams.lease_end} onChange={e => setLeaseParams({...leaseParams, lease_end: e.target.value})} required />
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div>
+                  <label className="nexas-label">Monthly Rent (৳)</label>
+                  <input type="number" className="nexas-input" value={leaseParams.monthly_rent} onChange={e => setLeaseParams({...leaseParams, monthly_rent: e.target.value})} required />
+                </div>
+                <div>
+                  <label className="nexas-label">Security Deposit (৳)</label>
+                  <input type="number" className="nexas-input" value={leaseParams.security_deposit} onChange={e => setLeaseParams({...leaseParams, security_deposit: e.target.value})} required />
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+                <button type="submit" style={{
+                  flex: 1, padding: '12px', borderRadius: '10px', border: 'none',
+                  background: 'linear-gradient(135deg, var(--accent-purple), var(--accent-pink))',
+                  color: 'white', fontWeight: 600, cursor: 'pointer',
+                }}>Approve & Create Lease</button>
+                <button type="button" onClick={() => setApprovalModal(null)} style={{
+                  padding: '12px 24px', borderRadius: '10px', border: '1px solid var(--border-subtle)',
+                  background: 'transparent', color: 'var(--text-muted)', fontWeight: 600, cursor: 'pointer',
+                }}>Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 };

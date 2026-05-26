@@ -52,10 +52,16 @@ const Properties = () => {
             const c = gradients[i % gradients.length];
             return (
               <div key={p.property_id} className="property-card scroll-reveal" style={{ cursor: 'pointer' }} onClick={() => navigate(`/properties/${p.property_id}`)}>
-                <div style={{ height: '140px', background: `radial-gradient(circle at top right, rgba(${c},0.3), rgba(${c},0.05))`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ fontSize: '48px', opacity: 0.4 }}>⌂</span>
+                <div style={{ height: '160px', position: 'relative', overflow: 'hidden' }}>
+                  <img 
+                    src={`/images/property${(i % 8) + 1}.png`} 
+                    alt={p.name} 
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s' }}
+                    onError={(e) => { e.target.src = '/images/property1.png'; }}
+                  />
+                  <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(to top, var(--bg-card) 0%, transparent 100%)`, pointerEvents: 'none' }}></div>
                 </div>
-                <div style={{ padding: '20px' }}>
+                <div style={{ padding: '20px', paddingTop: '10px' }}>
                   <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.3rem', fontWeight: 600, marginBottom: '6px' }}>{p.name || 'Unnamed Property'}</h3>
                   <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>{p.address}{p.city ? `, ${p.city}` : ''}</p>
                   <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>

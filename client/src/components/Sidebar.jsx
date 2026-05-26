@@ -16,7 +16,7 @@ const navItems = [
   { id: 'browse-props', label: 'Browse Properties', path: '/browse-properties', icon: '🏘️', roles: ['Tenant'] },
   { id: 'my-bookings', label: 'My Bookings', path: '/my-bookings', icon: '📋', roles: ['Tenant'] },
   { id: 'maintenance-t', label: 'Maintenance', path: '/maintenance', icon: '⚙', roles: ['Tenant'] },
-  { id: 'notifications', label: 'Notifications', path: '/notifications', icon: '🔔', roles: ['Tenant'] },
+  { id: 'notifications', label: 'Notifications', path: '/notifications', icon: '🔔', roles: ['Tenant', 'Landlord', 'Staff'] },
   { id: 'objections-t', label: 'Objections', path: '/complaints', icon: '⚑', roles: ['Tenant'] },
   { id: 'objections-a', label: 'Objections', path: '/complaints', icon: '⚑', roles: ['Admin'] },
   { id: 'staff-about', label: 'About', path: '/about', icon: '👤', roles: ['Staff'] },
