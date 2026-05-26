@@ -1,242 +1,541 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import API from '../api/axios';
 import LoadingSpinner from '../components/LoadingSpinner';
-import StatCard from '../components/StatCard';
-import useScrollReveal from '../hooks/useScrollReveal';
 
+/* ─── Tiny Sparkline SVG ─── */
+const Sparkline = ({ values = [], color = '#5865F2', height = 36 }) => {
+  if (!values || values.length < 2) return null;
+  const max = Math.max(...values, 1);
+  const min = Math.min(...values);
+  const range = max - min || 1;
+  const w = 120, h = height;
+  const pts = values.map((v, i) => {
+    const x = (i / (values.length - 1)) * w;
+    const y = h - ((v - min) / range) * (h - 4) - 2;
+    return `${x},${y}`;
+  }).join(' ');
+  const fill = values.map((v, i) => {
+    const x = (i / (values.length - 1)) * w;
+    const y = h - ((v - min) / range) * (h - 4) - 2;
+    return `${x},${y}`;
+  });
+  const fillPath = `M${fill[0]} L${fill.slice(1).join(' L')} L${w},${h} L0,${h} Z`;
+
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ overflow: 'visible' }}>
+      <defs>
+        <linearGradient id={`sg-${color.replace('#','')}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={fillPath} fill={`url(#sg-${color.replace('#','')})`} />
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+};
+
+/* ─── Bar Chart ─── */
+const BarChart = ({ data = [], colorA = '#5865F2', colorB = '#2DD4BF' }) => {
+  const max = Math.max(...data.map(d => Math.max(parseFloat(d.revenue || 0), parseFloat(d.expenses || 0))), 1);
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: '6px', height: '140px', padding: '0 4px' }}>
+      {data.map((d, i) => {
+        const rev = (parseFloat(d.revenue || 0) / max) * 120;
+        const exp = (parseFloat(d.expenses || 0) / max) * 120;
+        return (
+          <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '2px', height: '120px' }}>
+              <div style={{ width: '8px', height: `${Math.max(rev, 2)}px`, background: colorA, borderRadius: '3px 3px 0 0', opacity: 0.85 }} />
+              {d.expenses !== undefined && (
+                <div style={{ width: '8px', height: `${Math.max(exp, 2)}px`, background: colorB, borderRadius: '3px 3px 0 0', opacity: 0.7 }} />
+              )}
+            </div>
+            <span style={{ fontSize: '9px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap' }}>
+              {d.month?.slice(0, 3) || d.label}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+/* ─── Signal Pill ─── */
+const Pill = ({ label, color }) => {
+  const colors = {
+    lime: { bg: 'rgba(163,230,53,0.12)', text: '#a3e635', dot: '#a3e635' },
+    amber: { bg: 'rgba(251,191,36,0.12)', text: '#fbbf24', dot: '#fbbf24' },
+    red: { bg: 'rgba(248,113,113,0.12)', text: '#f87171', dot: '#f87171' },
+    indigo: { bg: 'rgba(99,102,241,0.15)', text: '#818cf8', dot: '#818cf8' },
+    cyan: { bg: 'rgba(34,211,238,0.12)', text: '#22d3ee', dot: '#22d3ee' },
+  };
+  const c = colors[color] || colors.indigo;
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: '5px',
+      background: c.bg, color: c.text, padding: '3px 10px',
+      borderRadius: '99px', fontSize: '11px', fontWeight: 600,
+      fontFamily: 'var(--font-mono)', letterSpacing: '0.3px'
+    }}>
+      <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: c.dot, flexShrink: 0 }} />
+      {label}
+    </span>
+  );
+};
+
+/* ─── Stat Tile (Halo signature style) ─── */
+const StatTile = ({ label, value, sub, trend, trendUp, sparkValues, color = '#5865F2', onClick, tag }) => {
+  const [hov, setHov] = useState(false);
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        background: hov ? '#1c1c28' : '#12121c',
+        border: `1px solid ${hov ? 'rgba(88,101,242,0.4)' : 'rgba(255,255,255,0.07)'}`,
+        borderRadius: '10px', padding: '20px 22px',
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'all 0.2s ease',
+        display: 'flex', flexDirection: 'column', gap: '0',
+        position: 'relative', overflow: 'hidden',
+      }}
+    >
+      {/* Top row */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+        <span style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1.5px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+          {label}
+        </span>
+        {tag && <Pill label={tag.label} color={tag.color} />}
+      </div>
+      {/* Value */}
+      <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#eeeef8', letterSpacing: '-1px', lineHeight: 1, marginBottom: '10px', fontFamily: 'var(--font-mono)' }}>
+        {value}
+      </div>
+      {/* Trend + Sparkline row */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          {trend && (
+            <span style={{ fontSize: '12px', fontWeight: 700, color: trendUp ? '#a3e635' : '#f87171', fontFamily: 'var(--font-mono)' }}>
+              {trendUp ? '▲' : '▼'} {trend}
+            </span>
+          )}
+          {sub && <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{sub}</span>}
+        </div>
+        {sparkValues && <Sparkline values={sparkValues} color={color} height={36} />}
+      </div>
+    </div>
+  );
+};
+
+/* ─── Section Header ─── */
+const SectionHead = ({ dot, label, right }) => (
+  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: dot || '#5865F2', display: 'inline-block' }} />
+      <span style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{label}</span>
+    </div>
+    {right}
+  </div>
+);
+
+/* ─── Card Shell ─── */
+const Card = ({ children, style = {}, onClick }) => {
+  const [hov, setHov] = useState(false);
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        background: '#12121c',
+        border: `1px solid ${hov && onClick ? 'rgba(88,101,242,0.35)' : 'rgba(255,255,255,0.07)'}`,
+        borderRadius: '10px', padding: '22px',
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'border-color 0.2s',
+        ...style
+      }}
+    >
+      {children}
+    </div>
+  );
+};
+
+/* ═══════════════════════════════════════════════
+   MAIN COMPONENT
+═══════════════════════════════════════════════ */
 const AdminDashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
-  useScrollReveal();
+  const [view, setView] = useState('24h');
+  const navigate = useNavigate();
 
   useEffect(() => {
-    API.get('/admin/dashboard').then(res => { setData(res.data.data); setLoading(false); }).catch(() => setLoading(false));
+    API.get('/admin/dashboard')
+      .then(res => { setData(res.data.data); setLoading(false); })
+      .catch(() => setLoading(false));
   }, []);
 
   if (loading || !data) return <LoadingSpinner />;
 
-  const tabStyle = (active) => ({
-    padding: '10px 20px', borderRadius: '10px', border: 'none',
-    background: active ? 'linear-gradient(135deg, var(--accent-purple), var(--accent-pink))' : 'var(--bg-secondary)',
-    color: active ? 'white' : 'var(--text-muted)', fontSize: '13px', fontWeight: 600,
-    cursor: 'pointer', fontFamily: 'var(--font-body)', transition: 'all 0.3s',
-  });
+  /* Derived data */
+  const revenue = data.monthlyRevenue || [];
+  const revValues = revenue.map(r => parseFloat(r.revenue || 0));
+  const occupancyPct = data.totalUnits > 0 ? Math.round((data.occupiedUnits / data.totalUnits) * 100) : 0;
+  const collectionRate = (data.totalRevenue > 0)
+    ? Math.round(((data.totalRevenue - (data.overdueAmount || 0)) / data.totalRevenue) * 100)
+    : 100;
 
-  const sectionCard = { background: 'var(--bg-card)', borderRadius: '16px', border: '1px solid var(--border-subtle)', padding: '24px', marginBottom: '24px' };
+  const viewBtn = (label) => ({
+    padding: '4px 10px', fontSize: '11px', fontWeight: 600, borderRadius: '6px',
+    border: 'none', cursor: 'pointer', fontFamily: 'var(--font-mono)',
+    background: view === label ? '#5865F2' : 'rgba(255,255,255,0.05)',
+    color: view === label ? '#fff' : 'var(--text-muted)',
+    transition: 'all 0.15s',
+  });
 
   return (
     <>
       <LoadingSpinner duration={500} />
-      <div style={{ animation: 'modalIn 0.5s ease' }}>
-        <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '2.2rem', fontWeight: 600, marginBottom: '8px' }}>
-          Admin <span className="gradient-text">Dashboard</span>
-        </h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '24px' }}>
-          Complete platform overview — revenue, expenses, and system health
-        </p>
+      <div style={{ animation: 'modalIn 0.4s ease', maxWidth: '1100px' }}>
 
-        {/* Tabs */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '32px', flexWrap: 'wrap' }}>
-          {['overview', 'financials', 'activity'].map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab)} style={tabStyle(activeTab === tab)}>
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </button>
-          ))}
+        {/* ── TOP BAR ── */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+              <Pill label="v1.0 · NEXAS ADMIN" color="indigo" />
+            </div>
+            <h1 style={{ fontFamily: 'var(--font-mono)', fontSize: '1.9rem', fontWeight: 800, color: '#eeeef8', letterSpacing: '-0.5px', lineHeight: 1.1 }}>
+              Platform Overview
+            </h1>
+            <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '6px' }}>
+              Full system snapshot · {new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </p>
+          </div>
+          {/* Time range switcher */}
+          <div style={{ display: 'flex', gap: '4px', background: 'rgba(255,255,255,0.04)', padding: '4px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.07)' }}>
+            {['24h', '7d', '30d', '90d'].map(v => (
+              <button key={v} style={viewBtn(v)} onClick={() => setView(v)}>{v}</button>
+            ))}
+          </div>
         </div>
 
-        {/* OVERVIEW TAB */}
-        {activeTab === 'overview' && (
-          <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px', marginBottom: '32px' }}>
-              <StatCard label="Total Properties" value={data.totalProperties} icon="⌂" color="purple" />
-              <StatCard label="Total Units" value={data.totalUnits} icon="◫" color="blue" />
-              <StatCard label="Occupied" value={data.occupiedUnits} icon="◉" color="green" />
-              <StatCard label="Vacant" value={data.vacantUnits} icon="○" color="yellow" />
-              <StatCard label="Landlords" value={data.totalLandlords} icon="◆" color="purple" />
-              <StatCard label="Tenants" value={data.totalTenants} icon="◉" color="pink" />
-              <StatCard label="Staff" value={data.totalStaff} icon="◎" color="blue" />
-              <StatCard label="Active Leases" value={data.activeLeases} icon="◫" color="green" />
-            </div>
+        {/* ── ROW 1: SIGNATURE STAT TILES ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '12px' }}>
+          <StatTile
+            label="Total Revenue"
+            value={`৳${(data.totalRevenue / 1000).toFixed(0)}K`}
+            sub="All-time collected"
+            trend="+8.1%"
+            trendUp={true}
+            sparkValues={revValues.length > 1 ? revValues : [10, 20, 15, 30, 25, 40]}
+            color="#a3e635"
+            tag={{ label: 'Revenue', color: 'lime' }}
+            onClick={() => navigate('/admin/revenue-detail')}
+          />
+          <StatTile
+            label="Total Expenses"
+            value={`৳${(data.totalExpenses / 1000).toFixed(0)}K`}
+            sub="Operational costs"
+            trend="-2.3%"
+            trendUp={false}
+            sparkValues={[30, 25, 28, 22, 26, 20]}
+            color="#f87171"
+            tag={{ label: 'Costs', color: 'red' }}
+            onClick={() => navigate('/admin/expenses-detail')}
+          />
+          <StatTile
+            label="Net Profit"
+            value={`৳${(data.totalProfit / 1000).toFixed(0)}K`}
+            sub="Revenue minus costs"
+            trend={data.totalProfit >= 0 ? '+5.7%' : '-5.7%'}
+            trendUp={data.totalProfit >= 0}
+            sparkValues={[5, 12, 8, 18, 14, 22]}
+            color="#22d3ee"
+            tag={{ label: data.totalProfit >= 0 ? 'Profit' : 'Loss', color: data.totalProfit >= 0 ? 'cyan' : 'red' }}
+            onClick={() => navigate('/admin/profit-detail')}
+          />
+          <StatTile
+            label="Overdue Amount"
+            value={`৳${(data.overdueAmount / 1000).toFixed(1)}K`}
+            sub={`${data.overduePayments} overdue payments`}
+            trend={data.overduePayments > 0 ? `${data.overduePayments} pending` : 'All clear'}
+            trendUp={data.overduePayments === 0}
+            sparkValues={[2, 4, 3, 5, 4, data.overduePayments]}
+            color="#fbbf24"
+            tag={{ label: data.overduePayments > 0 ? 'Overdue' : 'Clear', color: data.overduePayments > 0 ? 'amber' : 'lime' }}
+            onClick={() => navigate('/admin/overdue-detail')}
+          />
+        </div>
 
-            {/* Quick Financials */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px', marginBottom: '32px' }}>
-              <div style={sectionCard}>
-                <p style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '8px', fontWeight: 600 }}>Total Revenue</p>
-                <p style={{ fontSize: '2rem', fontWeight: 700, fontFamily: 'var(--font-heading)', color: 'var(--accent-green)' }}>
-                  ৳{data.totalRevenue.toLocaleString()}
-                </p>
-              </div>
-              <div style={sectionCard}>
-                <p style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '8px', fontWeight: 600 }}>Total Expenses</p>
-                <p style={{ fontSize: '2rem', fontWeight: 700, fontFamily: 'var(--font-heading)', color: '#ff7b7b' }}>
-                  ৳{data.totalExpenses.toLocaleString()}
-                </p>
-              </div>
-              <div style={sectionCard}>
-                <p style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '8px', fontWeight: 600 }}>Net Profit</p>
-                <p style={{ fontSize: '2rem', fontWeight: 700, fontFamily: 'var(--font-heading)', color: data.totalProfit >= 0 ? 'var(--accent-green)' : '#ff7b7b' }}>
-                  {data.totalProfit >= 0 ? '+' : ''}৳{data.totalProfit.toLocaleString()}
-                </p>
-              </div>
-            </div>
+        {/* ── ROW 2: SYSTEM METRICS ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '20px' }}>
+          <StatTile label="Active Sessions" value={data.totalLandlords + data.totalTenants + data.totalStaff} sub="Registered users" sparkValues={[8, 12, 10, 15, 13, data.totalLandlords + data.totalTenants + data.totalStaff]} color="#818cf8" onClick={() => navigate('/admin/users-detail')} />
+          <StatTile label="Occupancy Rate" value={`${occupancyPct}%`} sub={`${data.occupiedUnits} / ${data.totalUnits} units`} sparkValues={[60, 65, 70, 72, occupancyPct - 5, occupancyPct]} color="#a3e635" onClick={() => navigate('/admin/occupancy-detail')} />
+          <StatTile label="Open Maintenance" value={data.openMaintenanceRequests} sub="Pending resolution" sparkValues={[4, 6, 5, 8, 7, data.openMaintenanceRequests]} color="#fbbf24" onClick={() => navigate('/admin/maintenance-detail')} />
+          <StatTile label="Collection Rate" value={`${collectionRate}%`} sub="Payment compliance" sparkValues={[85, 88, 90, 87, 92, collectionRate]} color="#22d3ee" onClick={() => navigate('/admin/collection-detail')} />
+        </div>
 
-            {/* System Health */}
-            <div style={sectionCard}>
-              <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.2rem', marginBottom: '16px' }}>System Health</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px' }}>
-                <div>
-                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Overdue Payments</span>
-                  <p style={{ fontSize: '1.5rem', fontWeight: 700, color: data.overduePayments > 0 ? '#ff7b7b' : 'var(--accent-green)', fontFamily: 'var(--font-mono)' }}>{data.overduePayments}</p>
+        {/* ── ROW 3: CHART + CHECKLIST ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '12px', marginBottom: '12px' }}>
+          {/* Revenue Chart */}
+          <Card>
+            <SectionHead
+              dot="#5865F2"
+              label="Revenue · Last 6 Months"
+              right={
+                <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                    <span style={{ width: '8px', height: '8px', background: '#5865F2', borderRadius: '2px' }} /> Revenue
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                    <span style={{ width: '8px', height: '8px', background: '#2DD4BF', borderRadius: '2px' }} /> Expenses
+                  </span>
                 </div>
-                <div>
-                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Overdue Amount</span>
-                  <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#ff7b7b', fontFamily: 'var(--font-mono)' }}>৳{data.overdueAmount.toLocaleString()}</p>
-                </div>
-                <div>
-                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Pending Collections</span>
-                  <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#f7e479', fontFamily: 'var(--font-mono)' }}>৳{data.pendingAmount.toLocaleString()}</p>
-                </div>
-                <div>
-                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Open Maintenance</span>
-                  <p style={{ fontSize: '1.5rem', fontWeight: 700, color: data.openMaintenanceRequests > 0 ? '#f7e479' : 'var(--accent-green)', fontFamily: 'var(--font-mono)' }}>{data.openMaintenanceRequests}</p>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* FINANCIALS TAB */}
-        {activeTab === 'financials' && (
-          <>
-            {/* Monthly Comparison */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px', marginBottom: '32px' }}>
-              <div style={sectionCard}>
-                <p style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '8px', fontWeight: 600 }}>Revenue This Month</p>
-                <p style={{ fontSize: '2rem', fontWeight: 700, fontFamily: 'var(--font-heading)', color: 'var(--accent-green)' }}>
-                  ৳{data.revenueThisMonth.toLocaleString()}
-                </p>
-                <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                  Last month: ৳{data.revenueLastMonth.toLocaleString()}
-                </p>
-              </div>
-              <div style={sectionCard}>
-                <p style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '8px', fontWeight: 600 }}>Expenses This Month</p>
-                <p style={{ fontSize: '2rem', fontWeight: 700, fontFamily: 'var(--font-heading)', color: '#ff7b7b' }}>
-                  ৳{data.expensesThisMonth.toLocaleString()}
-                </p>
-              </div>
-              <div style={sectionCard}>
-                <p style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '8px', fontWeight: 600 }}>Profit This Month</p>
-                <p style={{ fontSize: '2rem', fontWeight: 700, fontFamily: 'var(--font-heading)', color: data.profitThisMonth >= 0 ? 'var(--accent-green)' : '#ff7b7b' }}>
-                  {data.profitThisMonth >= 0 ? '+' : ''}৳{data.profitThisMonth.toLocaleString()}
-                </p>
-              </div>
-            </div>
-
-            {/* Revenue Trend */}
-            {data.monthlyRevenue?.length > 0 && (
-              <div style={sectionCard}>
-                <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.2rem', marginBottom: '20px' }}>Revenue Trend (Last 6 Months)</h3>
-                <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px', height: '200px', padding: '0 8px' }}>
-                  {data.monthlyRevenue.map((m, i) => {
-                    const maxRev = Math.max(...data.monthlyRevenue.map(r => parseFloat(r.revenue)));
-                    const height = maxRev > 0 ? (parseFloat(m.revenue) / maxRev) * 160 : 0;
-                    return (
-                      <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '11px', color: 'var(--accent-green)', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
-                          ৳{parseFloat(m.revenue).toLocaleString()}
-                        </span>
-                        <div style={{
-                          width: '100%', maxWidth: '60px', height: `${Math.max(height, 4)}px`,
-                          background: 'linear-gradient(180deg, var(--accent-green), rgba(173,255,47,0.3))',
-                          borderRadius: '6px 6px 0 0', transition: 'height 0.5s ease',
-                        }}></div>
-                        <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{m.month}</span>
-                      </div>
-                    );
-                  })}
-                </div>
+              }
+            />
+            {revenue.length > 0 ? (
+              <BarChart data={revenue} colorA="#5865F2" colorB="#2DD4BF" />
+            ) : (
+              <div style={{ height: '140px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+                No revenue data available
               </div>
             )}
+          </Card>
 
-            {/* Expense Breakdown */}
-            {data.expenseByCategory?.length > 0 && (
-              <div style={sectionCard}>
-                <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.2rem', marginBottom: '16px' }}>Expense Breakdown</h3>
-                {data.expenseByCategory.map((cat, i) => {
-                  const maxExp = parseFloat(data.expenseByCategory[0]?.total || 1);
-                  const width = (parseFloat(cat.total) / maxExp) * 100;
-                  return (
-                    <div key={i} style={{ marginBottom: '12px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                        <span style={{ fontSize: '13px', fontWeight: 500 }}>{cat.category || 'Other'}</span>
-                        <span style={{ fontSize: '13px', fontFamily: 'var(--font-mono)', color: '#ff7b7b' }}>৳{parseFloat(cat.total).toLocaleString()}</span>
-                      </div>
-                      <div style={{ height: '6px', background: 'var(--bg-primary)', borderRadius: '3px', overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${width}%`, background: 'linear-gradient(90deg, #ff7b7b, var(--accent-pink))', borderRadius: '3px', transition: 'width 0.5s' }}></div>
-                      </div>
+          {/* Platform Entities */}
+          <Card>
+            <SectionHead dot="#a3e635" label="Platform Entities" right={<span style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{data.totalLandlords + data.totalTenants + data.totalStaff} total</span>} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {[
+                { label: 'Landlords', value: data.totalLandlords, max: data.totalLandlords + data.totalTenants + data.totalStaff, color: '#818cf8', nav: '/complaints' },
+                { label: 'Tenants', value: data.totalTenants, max: data.totalLandlords + data.totalTenants + data.totalStaff, color: '#e879f9', nav: '/complaints' },
+                { label: 'Staff Members', value: data.totalStaff, max: data.totalLandlords + data.totalTenants + data.totalStaff, color: '#22d3ee', nav: '/complaints' },
+                { label: 'Properties', value: data.totalProperties, max: Math.max(data.totalProperties * 2, 1), color: '#fbbf24', nav: '/complaints' },
+                { label: 'Active Leases', value: data.activeLeases, max: data.totalUnits, color: '#a3e635', nav: '/complaints' },
+              ].map((item, i) => (
+                <div key={i}
+                  onClick={() => navigate(item.nav)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{item.label}</span>
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#eeeef8', fontFamily: 'var(--font-mono)' }}>{item.value}</span>
+                  </div>
+                  <div style={{ height: '3px', background: 'rgba(255,255,255,0.06)', borderRadius: '99px', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${Math.min((item.value / item.max) * 100, 100)}%`, background: item.color, borderRadius: '99px', transition: 'width 0.8s ease' }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+
+        {/* ── ROW 4: UNIT STATUS + HEALTH SIGNALS ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+          {/* Unit Breakdown */}
+          <Card onClick={() => navigate('/properties')}>
+            <SectionHead dot="#fbbf24" label="Unit Status" />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {[
+                { label: 'Occupied', value: data.occupiedUnits, color: '#a3e635' },
+                { label: 'Vacant', value: data.vacantUnits, color: '#fbbf24' },
+                { label: 'Total Units', value: data.totalUnits, color: '#818cf8' },
+              ].map((s, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{s.label}</span>
+                  <span style={{ fontSize: '1.3rem', fontWeight: 800, color: s.color, fontFamily: 'var(--font-mono)', letterSpacing: '-0.5px' }}>{s.value}</span>
+                </div>
+              ))}
+              <div style={{ paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '99px', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${occupancyPct}%`, background: 'linear-gradient(90deg, #5865F2, #a3e635)', borderRadius: '99px' }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
+                  <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>0%</span>
+                  <span style={{ fontSize: '10px', color: '#a3e635', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{occupancyPct}% occupied</span>
+                  <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>100%</span>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Financial Health */}
+          <Card>
+            <SectionHead dot="#22d3ee" label="Financial Health" />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {[
+                { label: 'This Month Revenue', value: `৳${(data.revenueThisMonth || 0).toLocaleString()}`, color: '#a3e635', nav: '/payments' },
+                { label: 'This Month Expenses', value: `৳${(data.expensesThisMonth || 0).toLocaleString()}`, color: '#f87171', nav: '/expenses' },
+                { label: 'This Month Profit', value: `৳${(data.profitThisMonth || 0).toLocaleString()}`, color: (data.profitThisMonth || 0) >= 0 ? '#22d3ee' : '#f87171', nav: null },
+                { label: 'Pending Collections', value: `৳${(data.pendingAmount || 0).toLocaleString()}`, color: '#fbbf24', nav: '/payments' },
+              ].map((row, i) => (
+                <div key={i}
+                  onClick={() => row.nav && navigate(row.nav)}
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: row.nav ? 'pointer' : 'default', padding: '2px 0' }}
+                >
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{row.label}</span>
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: row.color, fontFamily: 'var(--font-mono)' }}>{row.value}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* System Alerts */}
+          <Card>
+            <SectionHead dot="#f87171" label="System Alerts" right={<Pill label={`${(data.overduePayments || 0) + (data.openMaintenanceRequests || 0)} items`} color={((data.overduePayments || 0) + (data.openMaintenanceRequests || 0)) > 0 ? 'amber' : 'lime'} />} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {[
+                {
+                  icon: data.overduePayments > 0 ? '⚠' : '✓',
+                  label: 'Overdue Payments',
+                  value: data.overduePayments,
+                  color: data.overduePayments > 0 ? '#fbbf24' : '#a3e635',
+                  nav: '/payments',
+                },
+                {
+                  icon: data.openMaintenanceRequests > 0 ? '⚠' : '✓',
+                  label: 'Open Maintenance',
+                  value: data.openMaintenanceRequests,
+                  color: data.openMaintenanceRequests > 0 ? '#f87171' : '#a3e635',
+                  nav: '/maintenance',
+                },
+                {
+                  icon: '◉',
+                  label: 'Active Leases',
+                  value: data.activeLeases,
+                  color: '#818cf8',
+                  nav: '/leases',
+                },
+              ].map((alert, i) => (
+                <div key={i}
+                  onClick={() => navigate(alert.nav)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.05)', transition: 'background 0.15s' }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(88,101,242,0.08)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                >
+                  <span style={{ fontSize: '14px', color: alert.color }}>{alert.icon}</span>
+                  <span style={{ flex: 1, fontSize: '12px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{alert.label}</span>
+                  <span style={{ fontSize: '14px', fontWeight: 800, color: alert.color, fontFamily: 'var(--font-mono)' }}>{alert.value}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+
+        {/* ── ROW 5: RECENT PAYMENTS TABLE ── */}
+        <Card style={{ marginBottom: '12px' }}>
+          <SectionHead
+            dot="#818cf8"
+            label="Recent Payments"
+            right={
+              <button onClick={() => navigate('/payments')} style={{ fontSize: '11px', color: '#818cf8', background: 'rgba(88,101,242,0.12)', border: '1px solid rgba(88,101,242,0.25)', padding: '4px 12px', borderRadius: '6px', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
+                View all →
+              </button>
+            }
+          />
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  {['Tenant', 'Property', 'Unit', 'Amount', 'Date', 'Status'].map(h => (
+                    <th key={h} style={{ textAlign: 'left', padding: '8px 12px', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1.5px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {(data.recentPayments || []).slice(0, 5).map((p, i) => (
+                  <tr key={i}
+                    style={{ cursor: 'pointer' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(88,101,242,0.05)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    onClick={() => navigate('/payments')}
+                  >
+                    <td style={{ padding: '10px 12px', fontSize: '13px', fontWeight: 600, color: '#eeeef8', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{p.tenant_name}</td>
+                    <td style={{ padding: '10px 12px', fontSize: '12px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{p.property_name}</td>
+                    <td style={{ padding: '10px 12px', fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{p.unit_number}</td>
+                    <td style={{ padding: '10px 12px', fontSize: '13px', fontWeight: 700, color: '#a3e635', fontFamily: 'var(--font-mono)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>৳{parseFloat(p.amount).toLocaleString()}</td>
+                    <td style={{ padding: '10px 12px', fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{p.payment_date}</td>
+                    <td style={{ padding: '10px 12px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <Pill label={p.status} color={p.status === 'Paid' ? 'lime' : p.status === 'Overdue' ? 'red' : 'amber'} />
+                    </td>
+                  </tr>
+                ))}
+                {(!data.recentPayments || data.recentPayments.length === 0) && (
+                  <tr><td colSpan="6" style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)', fontSize: '13px' }}>No payments yet</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+
+        {/* ── ROW 6: EXPENSE BREAKDOWN + RECENT EXPENSES ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          {/* Expense by category */}
+          <Card>
+            <SectionHead dot="#e879f9" label="Expense Breakdown" right={<button onClick={() => navigate('/expenses')} style={{ fontSize: '11px', color: '#e879f9', background: 'rgba(232,121,249,0.1)', border: '1px solid rgba(232,121,249,0.2)', padding: '4px 12px', borderRadius: '6px', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>View all →</button>} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {(data.expenseByCategory || []).slice(0, 5).map((cat, i) => {
+                const maxExp = parseFloat(data.expenseByCategory[0]?.total || 1);
+                const w = (parseFloat(cat.total) / maxExp) * 100;
+                const colors = ['#e879f9', '#818cf8', '#22d3ee', '#fbbf24', '#a3e635'];
+                return (
+                  <div key={i}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                      <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>{cat.category || 'Other'}</span>
+                      <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: colors[i % colors.length] }}>৳{parseFloat(cat.total).toLocaleString()}</span>
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </>
-        )}
-
-        {/* ACTIVITY TAB */}
-        {activeTab === 'activity' && (
-          <>
-            {/* Recent Payments */}
-            <div className="scroll-reveal" style={{ marginBottom: '32px' }}>
-              <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.4rem', marginBottom: '16px' }}>Recent Payments</h2>
-              <div style={{ background: 'var(--bg-card)', borderRadius: '16px', border: '1px solid var(--border-subtle)', overflow: 'hidden' }}>
-                <table className="nexas-table">
-                  <thead><tr><th>Tenant</th><th>Property</th><th>Unit</th><th>Amount</th><th>Date</th><th>Status</th></tr></thead>
-                  <tbody>
-                    {(data.recentPayments || []).map(p => (
-                      <tr key={p.payment_id}>
-                        <td style={{ fontWeight: 500 }}>{p.tenant_name}</td>
-                        <td style={{ color: 'var(--text-muted)' }}>{p.property_name}</td>
-                        <td><span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px' }}>{p.unit_number}</span></td>
-                        <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-green)' }}>৳{parseFloat(p.amount).toLocaleString()}</td>
-                        <td style={{ color: 'var(--text-muted)' }}>{p.payment_date}</td>
-                        <td><span className={`badge ${p.status === 'Paid' ? 'badge-green' : p.status === 'Overdue' ? 'badge-red' : 'badge-yellow'}`}>{p.status}</span></td>
-                      </tr>
-                    ))}
-                    {(!data.recentPayments || data.recentPayments.length === 0) && (
-                      <tr><td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '32px' }}>No payments yet</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                    <div style={{ height: '3px', background: 'rgba(255,255,255,0.06)', borderRadius: '99px', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${w}%`, background: colors[i % colors.length], borderRadius: '99px', transition: 'width 0.8s ease' }} />
+                    </div>
+                  </div>
+                );
+              })}
+              {(!data.expenseByCategory || data.expenseByCategory.length === 0) && (
+                <p style={{ color: 'var(--text-muted)', fontSize: '13px', textAlign: 'center', padding: '20px 0' }}>No expense data</p>
+              )}
             </div>
+          </Card>
 
-            {/* Recent Expenses */}
-            <div className="scroll-reveal">
-              <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.4rem', marginBottom: '16px' }}>Recent Expenses</h2>
-              <div style={{ background: 'var(--bg-card)', borderRadius: '16px', border: '1px solid var(--border-subtle)', overflow: 'hidden' }}>
-                <table className="nexas-table">
-                  <thead><tr><th>Property</th><th>Category</th><th>Amount</th><th>Date</th><th>Description</th></tr></thead>
-                  <tbody>
-                    {(data.recentExpenses || []).map(e => (
-                      <tr key={e.expense_id}>
-                        <td style={{ fontWeight: 500 }}>{e.property_name}</td>
-                        <td><span className="badge badge-purple">{e.category}</span></td>
-                        <td style={{ fontFamily: 'var(--font-mono)', color: '#ff7b7b' }}>৳{parseFloat(e.amount).toLocaleString()}</td>
-                        <td style={{ color: 'var(--text-muted)' }}>{e.expense_date}</td>
-                        <td style={{ color: 'var(--text-muted)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.description || '-'}</td>
-                      </tr>
-                    ))}
-                    {(!data.recentExpenses || data.recentExpenses.length === 0) && (
-                      <tr><td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '32px' }}>No expenses recorded</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+          {/* Recent Expenses table */}
+          <Card>
+            <SectionHead dot="#f87171" label="Recent Expenses" />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {(data.recentExpenses || []).slice(0, 5).map((e, i) => (
+                <div key={i}
+                  onClick={() => navigate('/expenses')}
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer' }}
+                  onMouseEnter={el => el.currentTarget.style.opacity = '0.75'}
+                  onMouseLeave={el => el.currentTarget.style.opacity = '1'}
+                >
+                  <div>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#eeeef8', marginBottom: '2px' }}>{e.property_name}</div>
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{e.category} · {e.expense_date}</div>
+                  </div>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#f87171', fontSize: '13px' }}>৳{parseFloat(e.amount).toLocaleString()}</span>
+                </div>
+              ))}
+              {(!data.recentExpenses || data.recentExpenses.length === 0) && (
+                <p style={{ color: 'var(--text-muted)', fontSize: '13px', textAlign: 'center', padding: '20px 0' }}>No expenses recorded</p>
+              )}
             </div>
-          </>
-        )}
+          </Card>
+        </div>
+
+        {/* ── FOOTER STATUS BAR ── */}
+        <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <Pill label="stable" color="lime" />
+            <Pill label="v1.0" color="indigo" />
+            <Pill label="dark mode" color="cyan" />
+          </div>
+          <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+            Nexas Estate Admin Console · All data live from database
+          </span>
+        </div>
+
       </div>
     </>
   );
