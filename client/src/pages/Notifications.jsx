@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 const Notifications = () => {
   const [notifs, setNotifs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState(null);
   const navigate = useNavigate();
   const { role } = useAuth();
 
@@ -20,11 +21,24 @@ const Notifications = () => {
     catch { toast.error('Failed'); }
   };
 
+  const handleDelete = async (e, id) => {
+    e.stopPropagation();
+    setDeletingId(id);
+    try {
+      await API.delete(`/notifications/${id}`);
+      setNotifs(prev => prev.filter(n => n.notification_id !== id));
+      toast.success('Notification deleted');
+    } catch {
+      toast.error('Failed to delete');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const handleNotifClick = (n) => {
     const type = (n.type || '').toLowerCase();
     const msg = (n.message || '').toLowerCase();
     
-    // Auto-mark as read on click if it isn't already
     if (!n.is_read) {
       API.put(`/notifications/${n.notification_id}/read`).then(load).catch(()=>{});
     }
@@ -42,7 +56,30 @@ const Notifications = () => {
     <>
       <LoadingSpinner duration={500} />
       <div style={{ animation: 'modalIn 0.5s ease' }}>
-        <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '2.2rem', fontWeight: 600, marginBottom: '32px' }}>Notifications</h1>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+          <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '2.2rem', fontWeight: 600 }}>Notifications</h1>
+          {notifs.length > 0 && (
+            <button
+              onClick={async () => {
+                if (!window.confirm('Clear all notifications?')) return;
+                try {
+                  await Promise.all(notifs.map(n => API.delete(`/notifications/${n.notification_id}`)));
+                  setNotifs([]);
+                  toast.success('All notifications cleared');
+                } catch { toast.error('Failed to clear'); }
+              }}
+              style={{
+                padding: '8px 18px', borderRadius: '10px', border: '1px solid rgba(239,68,68,0.3)',
+                background: 'rgba(239,68,68,0.08)', color: '#ef4444', fontSize: '13px',
+                fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s'
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.18)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(239,68,68,0.08)'}
+            >
+              🗑 Clear All
+            </button>
+          )}
+        </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '700px' }}>
           {notifs.map(n => (
             <div key={n.notification_id} onClick={() => handleNotifClick(n)} style={{
@@ -61,23 +98,45 @@ const Notifications = () => {
                 <p style={{ fontSize: '14px', lineHeight: 1.5, marginBottom: '6px', color: n.is_read ? 'var(--text-muted)' : 'white' }}>{n.message}</p>
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                   <span className={`badge badge-${n.type === 'Payment' ? 'green' : n.type === 'Maintenance' ? 'yellow' : n.type === 'Booking' ? 'pink' : 'purple'}`}>{n.type}</span>
-                  <span style={{ fontSize: '11px', color: '#555' }}>{new Date(n.created_at).toLocaleDateString()}</span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{new Date(n.created_at).toLocaleDateString()}</span>
                 </div>
               </div>
-              {!n.is_read && (
-                <button onClick={(e) => markRead(e, n.notification_id)} style={{
-                  padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--border-subtle)',
-                  background: 'transparent', color: 'var(--text-muted)', fontSize: '11px',
-                  cursor: 'pointer', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap',
-                  transition: 'background 0.2s'
-                }}
-                onMouseEnter={e => e.target.style.background = 'rgba(255,255,255,0.05)'}
-                onMouseLeave={e => e.target.style.background = 'transparent'}
-                >Mark Read</button>
-              )}
+              <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                {!n.is_read && (
+                  <button onClick={(e) => markRead(e, n.notification_id)} style={{
+                    padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--border-subtle)',
+                    background: 'transparent', color: 'var(--text-muted)', fontSize: '11px',
+                    cursor: 'pointer', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={e => e.target.style.background = 'rgba(255,255,255,0.05)'}
+                  onMouseLeave={e => e.target.style.background = 'transparent'}
+                  >Mark Read</button>
+                )}
+                <button
+                  onClick={(e) => handleDelete(e, n.notification_id)}
+                  disabled={deletingId === n.notification_id}
+                  style={{
+                    padding: '6px 10px', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.25)',
+                    background: 'rgba(239,68,68,0.07)', color: '#ef4444', fontSize: '13px',
+                    cursor: deletingId === n.notification_id ? 'wait' : 'pointer',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.18)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(239,68,68,0.07)'}
+                  title="Delete notification"
+                >
+                  🗑
+                </button>
+              </div>
             </div>
           ))}
-          {notifs.length === 0 && !loading && <p style={{ color: 'var(--text-muted)', padding: '40px', textAlign: 'center' }}>No notifications</p>}
+          {notifs.length === 0 && !loading && (
+            <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>
+              <p style={{ fontSize: '40px', marginBottom: '12px', opacity: 0.3 }}>🔔</p>
+              <p>No notifications</p>
+            </div>
+          )}
         </div>
       </div>
     </>

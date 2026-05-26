@@ -9,9 +9,12 @@
   --accent-green: greenyellow;
   --accent-purple: #402fb5;
   --accent-pink: #cf30aa;
-  --text-primary: #ffffff;
-  --text-muted: #c0b9c0;
-  --border-subtle: rgba(255,255,255,0.08);
+  /* Text colors — proper contrast hierarchy */
+  --text-primary: #f0f0f0;      /* headings, important labels */
+  --text-secondary: #b8b8c8;    /* body text, descriptions */
+  --text-muted: #7a7a8e;        /* timestamps, subtitles, hints */
+  --text-dim: #555566;          /* disabled, decorative only */
+  --border-subtle: rgba(255,255,255,0.09);
   --font-heading: 'Cormorant Garamond', serif;
   --font-body: 'DM Sans', 'Inter', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
@@ -98,7 +101,7 @@
   font-family: var(--font-body);
 }
 #poda { display: flex; align-items: center; justify-content: center; position: relative; }
-.search-input::placeholder { color: #c0b9c0; }
+.search-input::placeholder { color: var(--text-secondary); }
 .search-input:focus { outline: none; }
 #main:focus-within > #input-mask { display: none; }
 #input-mask {
@@ -232,7 +235,7 @@
 }
 .radio-container label {
   cursor: pointer; padding: 0.85rem 1rem; position: relative;
-  color: grey; transition: all 0.3s ease-in-out;
+  color: var(--text-secondary); transition: all 0.3s ease-in-out;
   font-size: 0.9rem; font-family: var(--font-body); font-weight: 500;
   display: flex; align-items: center; gap: 12px;
   white-space: nowrap;
@@ -365,8 +368,8 @@
 .nexas-table { width: 100%; border-collapse: separate; border-spacing: 0; }
 .nexas-table thead th {
   padding: 14px 16px; text-align: left; font-size: 11px;
-  text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted);
-  font-weight: 600; border-bottom: 1px solid var(--border-subtle);
+  text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-secondary);
+  font-weight: 700; border-bottom: 1px solid var(--border-subtle);
   font-family: var(--font-body); background: var(--bg-secondary);
 }
 .nexas-table tbody td {
@@ -413,7 +416,7 @@
   font-size: 14px; transition: border-color 0.3s;
 }
 .nexas-input:focus { outline: none; border-color: var(--accent-purple); }
-.nexas-input::placeholder { color: #555; }
+.nexas-input::placeholder { color: var(--text-muted); }
 .nexas-select {
   width: 100%; padding: 12px 16px; border-radius: 10px;
   background: var(--bg-primary); border: 1px solid var(--border-subtle);

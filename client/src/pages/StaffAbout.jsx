@@ -4,6 +4,22 @@ import { useAuth } from '../context/AuthContext';
 import useScrollReveal from '../hooks/useScrollReveal';
 import LoadingSpinner from '../components/LoadingSpinner';
 
+const RatingSlider = ({ rating }) => {
+  const pct = (rating / 5) * 100;
+  const color = pct >= 80 ? '#10b981' : pct >= 60 ? '#f59e0b' : '#ef4444';
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: '160px' }}>
+      <div style={{ flex: 1, height: '8px', background: 'var(--bg-secondary)', borderRadius: '99px', overflow: 'hidden' }}>
+        <div style={{
+          width: `${pct}%`, height: '100%', background: color,
+          borderRadius: '99px', transition: 'width 1s ease'
+        }} />
+      </div>
+      <span style={{ fontSize: '14px', fontWeight: 700, color, minWidth: '28px' }}>{rating}/5</span>
+    </div>
+  );
+};
+
 const StaffAbout = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -93,18 +109,12 @@ const StaffAbout = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {stats.reviews.map(review => (
               <div key={review.review_id} style={{ background: 'var(--bg-card)', padding: '24px', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
                   <div>
                     <h4 style={{ fontWeight: 600, fontSize: '16px', marginBottom: '4px' }}>{review.reviewer_name}</h4>
                     <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{new Date(review.created_at).toLocaleDateString()}</span>
                   </div>
-                  <div style={{ display: 'flex', gap: '2px' }}>
-                    {[1, 2, 3, 4, 5].map(star => (
-                      <span key={star} style={{ color: star <= review.rating ? '#f59e0b' : 'var(--border-subtle)', fontSize: '16px' }}>
-                        ★
-                      </span>
-                    ))}
-                  </div>
+                  <RatingSlider rating={review.rating} />
                 </div>
                 <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, fontSize: '15px' }}>"{review.comment}"</p>
               </div>

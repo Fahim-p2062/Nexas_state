@@ -55,6 +55,12 @@ const Staff = () => {
                     {s.role && <span className="badge badge-purple">{s.role}</span>}
                     {s.phone && <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>{s.phone}</span>}
                   </div>
+                  {(s.Total_Tasks_Assigned > 0 || s.Average_Rating > 0) && (
+                    <div style={{ display: 'flex', gap: '12px', marginTop: '8px', fontSize: '11px', fontWeight: 600 }}>
+                      {s.Average_Rating > 0 && <span style={{ color: '#f59e0b' }}>⭐ {parseFloat(s.Average_Rating).toFixed(1)}</span>}
+                      {s.Total_Tasks_Assigned > 0 && <span style={{ color: '#10b981' }}>✓ {s.Tasks_Completed} / {s.Total_Tasks_Assigned} Tasks</span>}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

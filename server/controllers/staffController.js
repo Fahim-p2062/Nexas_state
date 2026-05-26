@@ -5,8 +5,11 @@ const bcrypt = require('bcrypt');
 const getStaff = async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT staff_id, landlord_id, name, email, role, phone, created_at 
-      FROM staff WHERE landlord_id = ? ORDER BY created_at DESC`,
+      `SELECT s.staff_id, s.landlord_id, s.name, s.email, s.role, s.phone, s.created_at,
+              v.Total_Tasks_Assigned, v.Tasks_Completed, v.Tasks_Pending, v.Average_Rating, v.Total_Reviews
+       FROM staff s
+       LEFT JOIN staff_performance_summary v ON s.staff_id = v.staff_id
+       WHERE s.landlord_id = ? ORDER BY s.created_at DESC`,
       [req.user.id]
     );
     res.json({ success: true, data: rows });

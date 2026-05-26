@@ -33,4 +33,22 @@ const markAsRead = async (req, res) => {
   }
 };
 
-module.exports = { getMyNotifications, markAsRead };
+// Delete a notification
+const deleteNotification = async (req, res) => {
+  try {
+    const [existing] = await pool.query(
+      'SELECT * FROM notifications WHERE notification_id = ? AND user_id = ? AND user_role = ?',
+      [req.params.id, req.user.id, req.user.role]
+    );
+    if (existing.length === 0) {
+      return res.status(404).json({ success: false, message: 'Notification not found.' });
+    }
+    await pool.query('DELETE FROM notifications WHERE notification_id = ?', [req.params.id]);
+    res.json({ success: true, message: 'Notification deleted.' });
+  } catch (err) {
+    console.error('Delete notification error:', err);
+    res.status(500).json({ success: false, message: 'Server error.' });
+  }
+};
+
+module.exports = { getMyNotifications, markAsRead, deleteNotification };
