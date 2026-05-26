@@ -168,7 +168,16 @@ INSERT INTO maintenance_requests (unit_id, tenant_id, title, description, priori
 (4, 3, 'Install new power outlet', 'Need an extra power outlet in the living room.', 'Low', 'Pending', '2025-01-13 14:00:00', NULL),
 (1, 1, 'Clear garbage from block A', 'Garbage has not been collected from block A for two days.', 'Medium', 'In Progress', '2025-01-14 09:00:00', NULL),
 (2, 2, 'Night shift patrol request', 'Tenant reported suspicious activity near parking area.', 'High', 'In Progress', '2025-01-14 22:00:00', NULL),
-(4, 3, 'Fix water line issue', 'Low water pressure in bathroom.', 'High', 'Pending', '2025-01-15 08:00:00', NULL);
+(4, 3, 'Fix water line issue', 'Low water pressure in bathroom.', 'High', 'Pending', '2025-01-15 08:00:00', NULL),
+(1, 1, 'Dummy Resolved Work 1', 'Testing resolved work 1', 'Low', 'Resolved', '2025-01-01 10:00:00', '2025-01-02 10:00:00'),
+(2, 2, 'Dummy Resolved Work 2', 'Testing resolved work 2', 'Low', 'Resolved', '2025-01-02 10:00:00', '2025-01-03 10:00:00'),
+(4, 3, 'Dummy Resolved Work 3', 'Testing resolved work 3', 'Low', 'Resolved', '2025-01-03 10:00:00', '2025-01-04 10:00:00'),
+(5, 1, 'Dummy Resolved Work 4', 'Testing resolved work 4', 'Low', 'Resolved', '2025-01-04 10:00:00', '2025-01-05 10:00:00'),
+(9, 6, 'Dummy Resolved Work 5', 'Testing resolved work 5', 'Low', 'Resolved', '2025-01-05 10:00:00', '2025-01-06 10:00:00'),
+(10, 7, 'Dummy Pending Work 1', 'Testing pending work 1', 'Low', 'Pending', '2025-01-06 10:00:00', NULL),
+(12, 8, 'Dummy Pending Work 2', 'Testing pending work 2', 'Low', 'Pending', '2025-01-07 10:00:00', NULL),
+(14, 10, 'Dummy Pending Work 3', 'Testing pending work 3', 'Low', 'Pending', '2025-01-08 10:00:00', NULL),
+(15, 11, 'Dummy Pending Work 4', 'Testing pending work 4', 'Low', 'Pending', '2025-01-09 10:00:00', NULL);
 
 INSERT INTO maintenance_assignments (request_id, staff_id, assigned_at, notes) VALUES
 (1, 2, '2024-06-10 11:00:00', 'AC technician dispatched'),
@@ -185,7 +194,16 @@ INSERT INTO maintenance_assignments (request_id, staff_id, assigned_at, notes) V
 (18, 8, '2025-01-13 14:30:00', 'Waiting for parts'),
 (19, 9, '2025-01-14 09:30:00', 'Jamal is clearing the area'),
 (20, 10, '2025-01-14 22:30:00', 'Kamal assigned to night patrol'),
-(21, 11, '2025-01-15 08:30:00', 'Tuhin is checking the main supply line');
+(21, 11, '2025-01-15 08:30:00', 'Tuhin is checking the main supply line'),
+(22, 1, '2025-01-01 11:00:00', 'Ahon assigned'),
+(23, 1, '2025-01-02 11:00:00', 'Ahon assigned'),
+(24, 1, '2025-01-03 11:00:00', 'Ahon assigned'),
+(25, 1, '2025-01-04 11:00:00', 'Ahon assigned'),
+(26, 1, '2025-01-05 11:00:00', 'Ahon assigned'),
+(27, 1, '2025-01-06 11:00:00', 'Ahon assigned'),
+(28, 1, '2025-01-07 11:00:00', 'Ahon assigned'),
+(29, 1, '2025-01-08 11:00:00', 'Ahon assigned'),
+(30, 1, '2025-01-09 11:00:00', 'Ahon assigned');
 
 INSERT INTO utility_bills (unit_id, utility_type, billing_month, amount, due_date, status) VALUES
 (1, 'Electricity', 'December 2024', 3200.00, '2025-01-10', 'Unpaid'),
@@ -301,5 +319,10 @@ INSERT INTO audit_logs (action, table_name, record_id, performed_by, performed_b
 ('CREATE', 'staff', 1, 1, 'Landlord', 'Staff added.'),
 ('UPDATE', 'payments', 29, 1, 'Landlord', 'Payment Overdue.'),
 ('UPDATE', 'maintenance_requests', 11, 3, 'Staff', 'Lift assigned.');
+
+INSERT INTO staff_reviews (staff_id, reviewer_name, rating, comment) VALUES
+(1, 'Arif Mahmud', 5, 'Ahon is a very skilled and fast worker.'),
+(1, 'Sumaiya Islam', 4, 'He completed the job on time, but left a bit of a mess.'),
+(1, 'Nabil Hasan', 5, 'Excellent service and very polite.');
 
 
