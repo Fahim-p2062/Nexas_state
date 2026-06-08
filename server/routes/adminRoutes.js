@@ -2,7 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { 
   getAdminDashboard, getAllLandlords, getAllTenants, getAllProperties,
-  getAllStaff, getAllObjections, getAllPayments, getAllMaintenance
+  getAllStaff, getAllObjections, getAllPayments, getAllMaintenance,
+  getAllUnits, getAllLeases
 } = require('../controllers/adminController');
 const { getAuditLogs, getAdminAuditLogs } = require('../controllers/auditLogController');
 const { verifyToken, authorizeRoles } = require('../middleware/authMiddleware');
@@ -17,6 +18,8 @@ router.get('/staff', getAllStaff);
 router.get('/objections', getAllObjections);
 router.get('/payments', getAllPayments);
 router.get('/maintenance', getAllMaintenance);
+router.get('/units', getAllUnits);
+router.get('/leases', getAllLeases);
 router.get('/audit-logs', getAuditLogs);
 router.get('/admin-audit-logs', getAdminAuditLogs);
 

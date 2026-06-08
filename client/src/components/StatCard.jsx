@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 
-const StatCard = ({ label, value, icon, color = 'purple' }) => {
+const StatCard = ({ label, value, icon, color = 'purple', onClick }) => {
   const [display, setDisplay] = useState(0);
   const ref = useRef(null);
   const numericVal = typeof value === 'number' ? value : parseFloat(String(value).replace(/[^0-9.]/g, ''));
@@ -29,7 +29,7 @@ const StatCard = ({ label, value, icon, color = 'purple' }) => {
   };
 
   return (
-    <div className="stat-card">
+    <div className="stat-card" onClick={onClick} style={{ cursor: onClick ? 'pointer' : 'default', ...(onClick ? {':hover': {transform: 'translateY(-2px)'}} : {}) }}>
       <div className="shimmer"></div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>

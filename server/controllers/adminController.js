@@ -345,7 +345,44 @@ const getAllMaintenance = async (req, res) => {
   }
 };
 
+// Get all units (admin only)
+const getAllUnits = async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT u.*, p.name as property_name, ll.name as landlord_name
+       FROM units u
+       JOIN properties p ON u.property_id = p.property_id
+       JOIN landlords ll ON p.landlord_id = ll.landlord_id
+       ORDER BY p.name ASC, u.unit_number ASC`
+    );
+    res.json({ success: true, data: rows });
+  } catch (err) {
+    console.error('Get all units error:', err);
+    res.status(500).json({ success: false, message: 'Server error.' });
+  }
+};
+
+// Get all leases (admin only)
+const getAllLeases = async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT l.*, t.name as tenant_name, u.unit_number, p.name as property_name, ll.name as landlord_name
+       FROM leases l
+       JOIN tenants t ON l.tenant_id = t.tenant_id
+       JOIN units u ON l.unit_id = u.unit_id
+       JOIN properties p ON u.property_id = p.property_id
+       JOIN landlords ll ON p.landlord_id = ll.landlord_id
+       ORDER BY l.start_date DESC`
+    );
+    res.json({ success: true, data: rows });
+  } catch (err) {
+    console.error('Get all leases error:', err);
+    res.status(500).json({ success: false, message: 'Server error.' });
+  }
+};
+
 module.exports = { 
   getAdminDashboard, getAllLandlords, getAllTenants, getAllProperties, 
-  getAllStaff, getAllObjections, getAllPayments, getAllMaintenance 
+  getAllStaff, getAllObjections, getAllPayments, getAllMaintenance,
+  getAllUnits, getAllLeases
 };

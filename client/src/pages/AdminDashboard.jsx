@@ -8,6 +8,9 @@ const AdminDashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
+  const [activeModal, setActiveModal] = useState(null);
+  const [modalData, setModalData] = useState(null);
+  const [modalLoading, setModalLoading] = useState(false);
   useScrollReveal();
 
   useEffect(() => {
@@ -24,6 +27,126 @@ const AdminDashboard = () => {
   });
 
   const sectionCard = { background: 'var(--bg-card)', borderRadius: '16px', border: '1px solid var(--border-subtle)', padding: '24px', marginBottom: '24px' };
+
+  const openModal = async (type) => {
+    setActiveModal(type);
+    setModalLoading(true);
+    try {
+      let endpoint = '';
+      if (type === 'properties') endpoint = '/admin/properties';
+      else if (['units', 'vacant', 'occupied'].includes(type)) endpoint = '/admin/units';
+      else if (type === 'landlords') endpoint = '/admin/landlords';
+      else if (type === 'tenants') endpoint = '/admin/tenants';
+      else if (type === 'staff') endpoint = '/admin/staff';
+      else if (type === 'leases') endpoint = '/admin/leases';
+      
+      if (endpoint) {
+        const res = await API.get(endpoint);
+        let list = res.data.data || [];
+        if (type === 'vacant') list = list.filter(u => u.status === 'Vacant');
+        if (type === 'occupied') list = list.filter(u => u.status === 'Occupied');
+        setModalData(list);
+      }
+    } catch (err) {
+      console.error('Failed to fetch details:', err);
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  const renderModalTable = () => {
+    if (!modalData || modalData.length === 0) return <tbody><tr><td style={{ textAlign: 'center', padding: '30px' }}>No records found.</td></tr></tbody>;
+    const type = activeModal;
+    
+    if (type === 'properties') {
+      return (
+        <>
+          <thead><tr><th>Name</th><th>Location</th><th>Landlord</th><th>Units (Vacant)</th></tr></thead>
+          <tbody>
+            {modalData.map(p => (
+              <tr key={p.property_id}>
+                <td>{p.name}</td><td>{p.location}</td><td>{p.landlord_name}</td>
+                <td>{p.unit_count} ({p.vacant_count})</td>
+              </tr>
+            ))}
+          </tbody>
+        </>
+      );
+    }
+    if (['units', 'vacant', 'occupied'].includes(type)) {
+      return (
+        <>
+          <thead><tr><th>Unit Number</th><th>Property</th><th>Rent</th><th>Status</th></tr></thead>
+          <tbody>
+            {modalData.map(u => (
+              <tr key={u.unit_id}>
+                <td>{u.unit_number}</td><td>{u.property_name}</td><td>৳{parseFloat(u.rent_amount).toLocaleString()}</td>
+                <td><span className={`badge ${u.status === 'Occupied' ? 'badge-green' : u.status === 'Vacant' ? 'badge-yellow' : 'badge-purple'}`}>{u.status}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </>
+      );
+    }
+    if (type === 'landlords') {
+      return (
+        <>
+          <thead><tr><th>Name</th><th>Email</th><th>Contact</th><th>Properties</th></tr></thead>
+          <tbody>
+            {modalData.map(l => (
+              <tr key={l.landlord_id}>
+                <td>{l.name}</td><td>{l.email}</td><td>{l.contact || '-'}</td><td>{l.property_count}</td>
+              </tr>
+            ))}
+          </tbody>
+        </>
+      );
+    }
+    if (type === 'tenants') {
+      return (
+        <>
+          <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Active Leases</th></tr></thead>
+          <tbody>
+            {modalData.map(t => (
+              <tr key={t.tenant_id}>
+                <td>{t.name}</td><td>{t.email}</td><td>{t.phone || '-'}</td><td>{t.active_leases}</td>
+              </tr>
+            ))}
+          </tbody>
+        </>
+      );
+    }
+    if (type === 'staff') {
+      return (
+        <>
+          <thead><tr><th>Name</th><th>Role</th><th>Phone</th><th>Landlord</th></tr></thead>
+          <tbody>
+            {modalData.map(s => (
+              <tr key={s.staff_id}>
+                <td>{s.name}</td><td>{s.role}</td><td>{s.phone || '-'}</td><td>{s.landlord_name}</td>
+              </tr>
+            ))}
+          </tbody>
+        </>
+      );
+    }
+    if (type === 'leases') {
+      return (
+        <>
+          <thead><tr><th>Tenant</th><th>Property (Unit)</th><th>Rent</th><th>Start Date</th><th>Status</th></tr></thead>
+          <tbody>
+            {modalData.map(l => (
+              <tr key={l.lease_id}>
+                <td>{l.tenant_name}</td><td>{l.property_name} ({l.unit_number})</td><td>৳{parseFloat(l.rent_amount).toLocaleString()}</td>
+                <td>{l.start_date}</td><td><span className={`badge ${l.status === 'Active' ? 'badge-green' : 'badge-red'}`}>{l.status}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </>
+      );
+    }
+    return null;
+  };
 
   return (
     <>
@@ -49,14 +172,14 @@ const AdminDashboard = () => {
         {activeTab === 'overview' && (
           <>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px', marginBottom: '32px' }}>
-              <StatCard label="Total Properties" value={data.totalProperties} icon="⌂" color="purple" />
-              <StatCard label="Total Units" value={data.totalUnits} icon="◫" color="blue" />
-              <StatCard label="Occupied" value={data.occupiedUnits} icon="◉" color="green" />
-              <StatCard label="Vacant" value={data.vacantUnits} icon="○" color="yellow" />
-              <StatCard label="Landlords" value={data.totalLandlords} icon="◆" color="purple" />
-              <StatCard label="Tenants" value={data.totalTenants} icon="◉" color="pink" />
-              <StatCard label="Staff" value={data.totalStaff} icon="◎" color="blue" />
-              <StatCard label="Active Leases" value={data.activeLeases} icon="◫" color="green" />
+              <StatCard label="Total Properties" value={data.totalProperties} icon="⌂" color="purple" onClick={() => openModal('properties')} />
+              <StatCard label="Total Units" value={data.totalUnits} icon="◫" color="blue" onClick={() => openModal('units')} />
+              <StatCard label="Occupied" value={data.occupiedUnits} icon="◉" color="green" onClick={() => openModal('occupied')} />
+              <StatCard label="Vacant" value={data.vacantUnits} icon="○" color="yellow" onClick={() => openModal('vacant')} />
+              <StatCard label="Landlords" value={data.totalLandlords} icon="◆" color="purple" onClick={() => openModal('landlords')} />
+              <StatCard label="Tenants" value={data.totalTenants} icon="◉" color="pink" onClick={() => openModal('tenants')} />
+              <StatCard label="Staff" value={data.totalStaff} icon="◎" color="blue" onClick={() => openModal('staff')} />
+              <StatCard label="Active Leases" value={data.activeLeases} icon="◫" color="green" onClick={() => openModal('leases')} />
             </div>
 
             {/* Quick Financials */}
@@ -238,6 +361,29 @@ const AdminDashboard = () => {
           </>
         )}
       </div>
+
+      {/* Details Modal */}
+      {activeModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', animation: 'fadeIn 0.2s ease', backdropFilter: 'blur(4px)' }} onClick={() => setActiveModal(null)}>
+          <div style={{ background: 'var(--bg-card)', width: '100%', maxWidth: '900px', maxHeight: '85vh', borderRadius: '16px', overflow: 'hidden', display: 'flex', flexDirection: 'column', border: '1px solid var(--border-subtle)', animation: 'modalIn 0.3s cubic-bezier(0.23,1,0.32,1)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.4rem', textTransform: 'capitalize' }}>
+                {activeModal.replace('vacant', 'Vacant Units').replace('occupied', 'Occupied Units').replace('leases', 'Active Leases')} Details
+              </h2>
+              <button onClick={() => setActiveModal(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '24px', cursor: 'pointer', padding: '0 8px' }}>&times;</button>
+            </div>
+            <div style={{ overflowY: 'auto', flex: 1, background: 'var(--bg-primary)' }}>
+              {modalLoading ? (
+                <div style={{ textAlign: 'center', padding: '60px' }}><LoadingSpinner duration={100} /></div>
+              ) : (
+                <table className="nexas-table" style={{ width: '100%', margin: 0, borderRadius: 0, border: 'none' }}>
+                  {renderModalTable()}
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

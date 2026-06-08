@@ -17,6 +17,7 @@ if (!fs.existsSync(uploadsDir)) {
 const allowedOrigins = new Set(
   (process.env.CLIENT_URL ? [process.env.CLIENT_URL] : []).concat([
     'http://localhost:5173',
+    'http://127.0.0.1:5173',
     'http://localhost:5174',
     'http://localhost:5175',
   ])
