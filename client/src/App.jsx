@@ -10,6 +10,15 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import LandlordDashboard from './pages/LandlordDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminRevenue from './pages/AdminRevenue';
+import AdminRevenueDetail from './pages/AdminRevenueDetail';
+import AdminExpensesDetail from './pages/AdminExpensesDetail';
+import AdminProfitDetail from './pages/AdminProfitDetail';
+import AdminOverdueDetail from './pages/AdminOverdueDetail';
+import AdminUsersDetail from './pages/AdminUsersDetail';
+import AdminOccupancyDetail from './pages/AdminOccupancyDetail';
+import AdminMaintenanceDetail from './pages/AdminMaintenanceDetail';
+import AdminCollectionDetail from './pages/AdminCollectionDetail';
 import Properties from './pages/Properties';
 import PropertyDetail from './pages/PropertyDetail';
 import Tenants from './pages/Tenants';
@@ -22,6 +31,8 @@ import Staff from './pages/Staff';
 import Documents from './pages/Documents';
 import Expenses from './pages/Expenses';
 import TenantPortal from './pages/TenantPortal';
+import StaffAbout from './pages/StaffAbout';
+import StaffMaintenance from './pages/StaffMaintenance';
 import Notifications from './pages/Notifications';
 import Complaints from './pages/Complaints';
 import BrowseProperties from './pages/BrowseProperties';
@@ -48,6 +59,7 @@ function App() {
   const getRedirect = () => {
     if (role === 'Admin') return '/admin';
     if (role === 'Tenant') return '/tenant-portal';
+    if (role === 'Staff') return '/about';
     return '/dashboard';
   };
 
@@ -71,6 +83,33 @@ function App() {
         {/* Admin routes */}
         <Route path="/admin" element={
           <ProtectedRoute roles={['Admin']}><AdminDashboard /></ProtectedRoute>
+        } />
+        <Route path="/admin/revenue" element={
+          <ProtectedRoute roles={['Admin']}><AdminRevenue /></ProtectedRoute>
+        } />
+        <Route path="/admin/revenue-detail" element={
+          <ProtectedRoute roles={['Admin']}><AdminRevenueDetail /></ProtectedRoute>
+        } />
+        <Route path="/admin/expenses-detail" element={
+          <ProtectedRoute roles={['Admin']}><AdminExpensesDetail /></ProtectedRoute>
+        } />
+        <Route path="/admin/profit-detail" element={
+          <ProtectedRoute roles={['Admin']}><AdminProfitDetail /></ProtectedRoute>
+        } />
+        <Route path="/admin/overdue-detail" element={
+          <ProtectedRoute roles={['Admin']}><AdminOverdueDetail /></ProtectedRoute>
+        } />
+        <Route path="/admin/users-detail" element={
+          <ProtectedRoute roles={['Admin']}><AdminUsersDetail /></ProtectedRoute>
+        } />
+        <Route path="/admin/occupancy-detail" element={
+          <ProtectedRoute roles={['Admin']}><AdminOccupancyDetail /></ProtectedRoute>
+        } />
+        <Route path="/admin/maintenance-detail" element={
+          <ProtectedRoute roles={['Admin']}><AdminMaintenanceDetail /></ProtectedRoute>
+        } />
+        <Route path="/admin/collection-detail" element={
+          <ProtectedRoute roles={['Admin']}><AdminCollectionDetail /></ProtectedRoute>
         } />
         <Route path="/complaints" element={
           <ProtectedRoute roles={['Admin', 'Landlord', 'Tenant']}><Complaints /></ProtectedRoute>
@@ -114,9 +153,11 @@ function App() {
           <ProtectedRoute roles={['Landlord']}><Expenses /></ProtectedRoute>
         } />
 
-        {/* Shared routes — Landlord and Staff only for maintenance */}
+        {/* Shared routes */}
         <Route path="/maintenance" element={
-          <ProtectedRoute roles={['Landlord', 'Tenant', 'Staff']}><Maintenance /></ProtectedRoute>
+          <ProtectedRoute roles={['Landlord', 'Tenant']}>
+            <Maintenance />
+          </ProtectedRoute>
         } />
         <Route path="/notifications" element={
           <ProtectedRoute roles={['Landlord', 'Tenant', 'Staff']}><Notifications /></ProtectedRoute>
@@ -125,6 +166,14 @@ function App() {
         {/* Tenant routes */}
         <Route path="/tenant-portal" element={
           <ProtectedRoute roles={['Tenant']}><TenantPortal /></ProtectedRoute>
+        } />
+        
+        {/* Staff routes */}
+        <Route path="/about" element={
+          <ProtectedRoute roles={['Staff']}><StaffAbout /></ProtectedRoute>
+        } />
+        <Route path="/maintenance-queue" element={
+          <ProtectedRoute roles={['Staff']}><StaffMaintenance /></ProtectedRoute>
         } />
         <Route path="/browse-properties" element={
           <ProtectedRoute roles={['Tenant']}><BrowseProperties /></ProtectedRoute>

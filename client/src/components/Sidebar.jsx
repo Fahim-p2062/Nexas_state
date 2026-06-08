@@ -8,7 +8,7 @@ const navItems = [
   { id: 'bookings-l', label: 'Bookings', path: '/landlord-bookings', icon: '📬', roles: ['Landlord'] },
   { id: 'tenants', label: 'Tenants', path: '/tenants', icon: '◉', roles: ['Landlord'] },
   { id: 'payments', label: 'Payments', path: '/payments', icon: '◈', roles: ['Landlord'] },
-  { id: 'maintenance-l', label: 'Maintenance', path: '/maintenance', icon: '⚙', roles: ['Landlord', 'Staff'] },
+  { id: 'maintenance-l', label: 'Maintenance', path: '/maintenance', icon: '⚙', roles: ['Landlord'] },
   { id: 'leases', label: 'Leases', path: '/leases', icon: '◫', roles: ['Landlord'] },
   { id: 'staff', label: 'Staff', path: '/staff', icon: '◎', roles: ['Landlord'] },
   { id: 'objections-l', label: 'Objections', path: '/complaints', icon: '⚑', roles: ['Landlord'] },
@@ -19,6 +19,8 @@ const navItems = [
   { id: 'notifications', label: 'Notifications', path: '/notifications', icon: '🔔', roles: ['Tenant', 'Landlord', 'Staff'] },
   { id: 'objections-t', label: 'Objections', path: '/complaints', icon: '⚑', roles: ['Tenant'] },
   { id: 'objections-a', label: 'Objections', path: '/complaints', icon: '⚑', roles: ['Admin'] },
+  { id: 'staff-about', label: 'About', path: '/about', icon: '👤', roles: ['Staff'] },
+  { id: 'staff-maintenance', label: 'Maintenance', path: '/maintenance-queue', icon: '⚙', roles: ['Staff'] },
 ];
 
 const Sidebar = () => {

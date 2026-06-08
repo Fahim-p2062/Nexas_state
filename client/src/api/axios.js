@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const API = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'https://nexas-state.onrender.com/api',
+  baseURL: 'http://localhost:5002/api', // Hardcoded for local testing
   headers: {
     'Content-Type': 'application/json'
   }

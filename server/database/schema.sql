@@ -285,14 +285,14 @@ FROM properties p
 LEFT JOIN units u ON p.property_id = u.property_id
 GROUP BY p.property_id, p.name;
 
-CREATE VIEW maintenance_tracker AS
-SELECT
+CREATE OR REPLACE VIEW maintenance_tracker AS
+SELECT 
     mr.request_id,
-    mr.title AS Issue,
-    mr.priority,
-    mr.status AS Resolution_Status,
-    u.unit_number,
-    t.name AS Reported_By,
+    mr.title AS Issue, 
+    mr.priority, 
+    mr.status AS Resolution_Status, 
+    u.unit_number, 
+    t.name AS Reported_By, 
     s.name AS Assigned_Staff,
     s.role AS Staff_Role
 FROM maintenance_requests mr
@@ -300,3 +300,30 @@ JOIN units u ON mr.unit_id = u.unit_id
 JOIN tenants t ON mr.tenant_id = t.tenant_id
 LEFT JOIN maintenance_assignments ma ON mr.request_id = ma.request_id
 LEFT JOIN staff s ON ma.staff_id = s.staff_id;
+
+-- staff performance tracking with aggregate functions
+CREATE OR REPLACE VIEW staff_performance_summary AS
+SELECT 
+    s.staff_id,
+    s.name AS Staff_Name,
+    s.role AS Staff_Role,
+    COUNT(DISTINCT ma.assignment_id) AS Total_Tasks_Assigned,
+    SUM(CASE WHEN mr.status IN ('Resolved', 'Closed') THEN 1 ELSE 0 END) AS Tasks_Completed,
+    SUM(CASE WHEN mr.status NOT IN ('Resolved', 'Closed') THEN 1 ELSE 0 END) AS Tasks_Pending,
+    COALESCE(AVG(sr.rating), 0) AS Average_Rating,
+    COUNT(DISTINCT sr.review_id) AS Total_Reviews
+FROM staff s
+LEFT JOIN maintenance_assignments ma ON s.staff_id = ma.staff_id
+LEFT JOIN maintenance_requests mr ON ma.request_id = mr.request_id
+LEFT JOIN staff_reviews sr ON s.staff_id = sr.staff_id
+GROUP BY s.staff_id, s.name, s.role;
+
+CREATE TABLE IF NOT EXISTS staff_reviews (
+  review_id INT AUTO_INCREMENT PRIMARY KEY,
+  staff_id INT NOT NULL,
+  reviewer_name VARCHAR(100) NOT NULL,
+  rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  comment TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (staff_id) REFERENCES staff(staff_id) ON DELETE CASCADE
+);

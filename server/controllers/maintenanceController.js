@@ -159,4 +159,39 @@ const updateMaintenanceRequest = async (req, res) => {
   }
 };
 
-module.exports = { getMaintenanceRequests, createMaintenanceRequest, updateMaintenanceRequest };
+// Delete a maintenance request (staff - only resolved/closed)
+const deleteMaintenanceRequest = async (req, res) => {
+  try {
+    const requestId = req.params.id;
+    const [existing] = await pool.query('SELECT * FROM maintenance_requests WHERE request_id = ?', [requestId]);
+    if (existing.length === 0) {
+      return res.status(404).json({ success: false, message: 'Request not found.' });
+    }
+
+    // Staff can only delete Resolved or Closed requests
+    if (req.user.role === 'Staff') {
+      const [assigned] = await pool.query(
+        'SELECT * FROM maintenance_assignments WHERE request_id = ? AND staff_id = ?',
+        [requestId, req.user.id]
+      );
+      if (assigned.length === 0) {
+        return res.status(403).json({ success: false, message: 'You are not assigned to this request.' });
+      }
+      const allowedStatuses = ['Resolved', 'Closed'];
+      if (!allowedStatuses.includes(existing[0].status)) {
+        return res.status(400).json({ success: false, message: 'Only resolved or closed requests can be deleted.' });
+      }
+    }
+
+    // Delete assignments first (FK constraint)
+    await pool.query('DELETE FROM maintenance_assignments WHERE request_id = ?', [requestId]);
+    await pool.query('DELETE FROM maintenance_requests WHERE request_id = ?', [requestId]);
+
+    res.json({ success: true, message: 'Request deleted.' });
+  } catch (err) {
+    console.error('Delete maintenance error:', err);
+    res.status(500).json({ success: false, message: 'Server error.' });
+  }
+};
+
+module.exports = { getMaintenanceRequests, createMaintenanceRequest, updateMaintenanceRequest, deleteMaintenanceRequest };
